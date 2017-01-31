@@ -371,18 +371,23 @@ void printFeedRate() {
 //------------------------------------------------------------------------------
 // Change pen state.
 void setPenAngle(int pen_angle) {
-  if(posz!=pen_angle) {
+	if (posz != pen_angle) {
 #if VERBOSE > 1
-    Serial.print(F("pen_angle="));  Serial.println(pen_angle);
+		Serial.print(F("pen_angle="));  Serial.println(pen_angle);
 #endif
-    posz=pen_angle;
+		posz = pen_angle;
 
-    if(posz<PEN_DOWN_ANGLE) posz=PEN_DOWN_ANGLE;
-    if(posz>PEN_UP_ANGLE  ) posz=PEN_UP_ANGLE;
+		if (PEN_DOWN_ANGLE < PEN_UP_ANGLE) {
+			if (posz < PEN_DOWN_ANGLE) posz = PEN_DOWN_ANGLE;
+			if (posz > PEN_UP_ANGLE) posz = PEN_UP_ANGLE;
+		} else {
+			if (posz > PEN_DOWN_ANGLE) posz = PEN_DOWN_ANGLE;
+			if (posz < PEN_UP_ANGLE) posz = PEN_UP_ANGLE;
+		}
 
-    s1.write( (int)posz );
-    delay(PEN_DELAY);
-  }
+		s1.write((int) posz);
+		delay(PEN_DELAY);
+	}
 }
 
 
