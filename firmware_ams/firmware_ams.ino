@@ -6,11 +6,14 @@
 // Copyright at end of file.  Please see
 // http://www.github.com/MarginallyClever/Makelangelo for more information.
 
+// #define MOTHERBOARD 1  // Adafruit Motor Shield 1
+// #define MOTHERBOARD 2  // Adafruit Motor Shield 2
+#define MOTHERBOARD 3  // Stepper
 
 //------------------------------------------------------------------------------
 // Sanity check
 //------------------------------------------------------------------------------
-#if defined(__AVR_ATmega2560__)
+#if MOTHERBOARD != 3 && defined(__AVR_ATmega2560__)
 // wrong board type set
 #error This code is not meant for Arduino MEGA or RUMBA boards.
 #endif
@@ -19,8 +22,6 @@
 //------------------------------------------------------------------------------
 // CONSTANTS
 //------------------------------------------------------------------------------
-#define MOTHERBOARD 1  // Adafruit Motor Shield 1
-//#define MOTHERBOARD 2  // Adafruit Motor Shield 2
 
 #if MOTHERBOARD == 2
 // stacked motor shields have different addresses. The default is 0x60
@@ -42,6 +43,7 @@
 //#define USE_LIMIT_SWITCH  (1)
 
 
+#if MOTHERBOARD == 1 || MOTHERBOARD == 2
 // which motor is on which pin?
 #define M1_PIN          (1)
 #define M2_PIN          (2)
@@ -55,6 +57,40 @@
 // We don't use microstepping on the AMS shield.
 #define MICROSTEPPING_MULTIPLIER  (16.0)
 #define STEPS_PER_TURN            (STEPPER_STEPS_PER_TURN*MICROSTEPPING_MULTIPLIER)
+
+
+#endif
+
+#if MOTHERBOARD == 3
+// The four pins used to drive the left motor. Remember the pins are 1, 3, 2, 4
+#define M2_PIN1	(2)
+#define M2_PIN2	(4)
+#define M2_PIN3	(3)
+#define M2_PIN4	(5)
+
+// The four pins used to drive the right motor. Remember the pins are 1, 3, 2, 4
+#define M1_PIN1	(6)
+#define M1_PIN2	(8)
+#define M1_PIN3	(7)
+#define M1_PIN4	(9)
+
+#define SERVO_PIN	(D0)
+
+// These are in the Adafruit libraries, but not in Stepper
+#define FORWARD -1
+#define BACKWARD 1
+
+// which limit switch is on which pin?
+#define L_PIN           (11)
+#define R_PIN           (12)
+
+// Cheep steppers are 32 steps per turn.
+#define STEPPER_STEPS_PER_TURN    (32.0)
+// The gearing on the stepper has a reduction ratio of 63.68395
+#define MICROSTEPPING_MULTIPLIER  (63.68395)
+#define STEPS_PER_TURN            (STEPPER_STEPS_PER_TURN*MICROSTEPPING_MULTIPLIER)
+
+#endif
 
 
 #define NUM_TOOLS  (6)
@@ -94,10 +130,12 @@
 // Maximum length of serial input message.
 #define MAX_BUF         (64)
 
+#if MOTHERBOARD == 1 || MOTHERBOARD == 2
 // servo pin differs based on device
 #define SERVO_PIN1      (10)
 #define SERVO_PIN2      (9)
 #define SERVO_PIN       SERVO_PIN1  // switch if you want to use the other pin.  Thanks, Aleksey!
+#endif
 
 #define TIMEOUT_OK      (1000)  // 1s with no instruction? Make sure PC knows we are waiting.
 #define TIMEOUT_MOTORS  (10000) // 10s with no command? Shut off motors.
@@ -115,6 +153,10 @@
 #if MOTHERBOARD == 2
 #define M1_ONESTEP(x)  m1->onestep(x,MICROSTEP)
 #define M2_ONESTEP(x)  m2->onestep(x,MICROSTEP)
+#endif
+#if MOTHERBOARD == 3
+#define M1_ONESTEP(x)  m1.step(x)
+#define M2_ONESTEP(x)  m2.step(x)
 #endif
 
 //------------------------------------------------------------------------------
@@ -149,6 +191,10 @@
 #include "Adafruit_MotorShield/Adafruit_MotorShield.h"
 #endif
 
+#if MOTHERBOARD == 3
+#include <Stepper.h>
+#endif
+
 // Default servo library
 #include <Servo.h>
 
@@ -161,7 +207,7 @@
 #include <EEPROM.h>
 #include <Arduino.h>  // for type definitions
 
-#include "Vector3.h"
+#include <Vector3.h>
 
 //------------------------------------------------------------------------------
 // VARIABLES
@@ -176,6 +222,11 @@ static AF_Stepper m2((int)STEPPER_STEPS_PER_TURN, M1_PIN);
 Adafruit_MotorShield AFMS0 = Adafruit_MotorShield(SHIELD_ADDRESS);
 Adafruit_StepperMotor *m1;
 Adafruit_StepperMotor *m2;
+#endif
+#if MOTHERBOARD == 3
+// Initialize Stepper library with two motors
+Stepper m1 ( STEPPER_STEPS_PER_TURN, M1_PIN1, M1_PIN2, M1_PIN3, M1_PIN4 );
+Stepper m2 ( STEPPER_STEPS_PER_TURN, M2_PIN1, M2_PIN2, M2_PIN3, M2_PIN4 );
 #endif
 
 static Servo s1;
@@ -297,6 +348,10 @@ void setFeedRate(float v) {
 #if MOTHERBOARD == 2
   m1->setSpeed(v);
   m2->setSpeed(v);
+#endif
+#if MOTHERBOARD == 3
+	m1.setSpeed(v);
+	m2.setSpeed(v);
 #endif
 
 #if VERBOSE > 1
@@ -901,6 +956,14 @@ void motor_disengage() {
   m1->release();
   m2->release();
 #endif
+#if MOTHERBOARD == 3
+	// Stepper doesn't have a release. So we'll do it manually
+	digitalWrite(M1_PIN1, LOW); digitalWrite(M2_PIN1, LOW);
+	digitalWrite(M1_PIN2, LOW); digitalWrite(M2_PIN2, LOW);
+	digitalWrite(M1_PIN3, LOW); digitalWrite(M2_PIN3, LOW);
+	digitalWrite(M1_PIN4, LOW); digitalWrite(M2_PIN4, LOW);
+#endif
+
 }
 
 
